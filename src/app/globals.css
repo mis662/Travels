@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary-600;
+  }
+}
+
+@utility container-x {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+}
+@utility btn {
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-primary-800 text-white hover:bg-primary-900;
+}
+@utility btn-accent {
+  @apply btn bg-accent-400 text-primary-950 hover:bg-accent-300;
+}
+@utility btn-outline {
+  @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-100;
+}
+@utility btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-700;
+}
+@utility btn-whatsapp {
+  @apply btn bg-[#1da851] text-white hover:bg-[#178a43];
+}
+@utility input {
+  @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:ring-2 focus:ring-primary-200 focus:outline-none aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-red-100;
+}
+@utility label {
+  @apply mb-1 block text-sm font-medium text-slate-700;
+}
+@utility card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+}
+
+@layer components {
+  .prose-legal h2 {
+    @apply mt-8 mb-2 text-xl font-semibold text-slate-900;
+  }
+  .prose-legal p,
+  .prose-legal li {
+    @apply mb-3 leading-relaxed text-slate-700;
+  }
+  .prose-legal ul {
+    @apply list-disc pl-6;
+  }
+}

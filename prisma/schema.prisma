@@ -1,0 +1,501 @@
+// To switch to PostgreSQL: change provider to "postgresql" and set DATABASE_URL.
+// Statuses are stored as strings (see src/lib/booking/status.ts) so the schema
+// stays identical across SQLite and PostgreSQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Single row (id = 1) holding business details and global pricing settings.
+model Setting {
+  id                      Int      @id @default(1)
+  businessName            String
+  tagline                 String   @default("")
+  phonePrimary            String
+  phoneSecondary          String   @default("")
+  whatsappPrimary         String
+  whatsappSecondary       String   @default("")
+  email                   String
+  address                 String
+  advanceBookingHours     Int      @default(2)
+  cancellationCutoffHours Int      @default(6)
+  nightCharge             Int      @default(300)
+  nightStartHour          Int      @default(22)
+  nightEndHour            Int      @default(6)
+  gstPercent              Float    @default(5)
+  minKmPerDay             Int      @default(250)
+  oneWayMinKm             Int      @default(150)
+  updatedAt               DateTime @updatedAt
+}
+
+model CarCategory {
+  id                    String   @id @default(cuid())
+  slug                  String   @unique
+  name                  String
+  exampleModels         String
+  seats                 Int
+  luggage               Int
+  ac                    Boolean  @default(true)
+  imageUrl              String   @default("")
+  description           String   @default("")
+  perKmRate             Float
+  baseFare              Int // minimum fare for outstation trips
+  driverAllowancePerDay Int
+  localExtraKmRate      Float
+  localExtraHourRate    Int
+  sortOrder             Int      @default(0)
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  localFares   LocalPackageFare[]
+  airportFares AirportFare[]
+  bookings     Booking[]
+  vehicles     Vehicle[]
+  orderCars    OrderCar[]
+}
+
+model LocalPackage {
+  id        String  @id @default(cuid())
+  code      String  @unique // e.g. "8-80"
+  name      String
+  hours     Int
+  km        Int
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  fares    LocalPackageFare[]
+  bookings Booking[]
+}
+
+model LocalPackageFare {
+  id         String       @id @default(cuid())
+  packageId  String
+  categoryId String
+  price      Int
+  package    LocalPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  category   CarCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, categoryId])
+}
+
+model Airport {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  name      String
+  shortName String
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  fares    AirportFare[]
+  bookings Booking[]
+}
+
+model AirportZone {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  name      String
+  areas     String  @default("") // comma separated example areas shown to customers
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  fares    AirportFare[]
+  bookings Booking[]
+}
+
+model AirportFare {
+  id         String      @id @default(cuid())
+  airportId  String
+  zoneId     String
+  categoryId String
+  fare       Int
+  airport    Airport     @relation(fields: [airportId], references: [id], onDelete: Cascade)
+  zone       AirportZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  category   CarCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([airportId, zoneId, categoryId])
+}
+
+model Route {
+  id             String   @id @default(cuid())
+  slug           String   @unique // e.g. "mumbai-to-pune"
+  fromCity       String   @default("Mumbai")
+  toCity         String
+  distanceKm     Int // one-way road distance
+  durationText   String   @default("")
+  description    String   @default("")
+  seoTitle       String   @default("")
+  seoDescription String   @default("")
+  popular        Boolean  @default(false)
+  sortOrder      Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+model Booking {
+  id               String  @id @default(cuid())
+  code             String  @unique // MUM-YYYYMMDD-XXXX
+  status           String  @default("PENDING")
+  tripType         String // AIRPORT | LOCAL | OUTSTATION_ONE_WAY | OUTSTATION_ROUND_TRIP
+  airportDirection String? // PICKUP (from airport) | DROP (to airport)
+
+  categoryId String
+  category   CarCategory   @relation(fields: [categoryId], references: [id])
+  routeId    String?
+  route      Route?        @relation(fields: [routeId], references: [id])
+  airportId  String?
+  airport    Airport?      @relation(fields: [airportId], references: [id])
+  zoneId     String?
+  zone       AirportZone?  @relation(fields: [zoneId], references: [id])
+  packageId  String?
+  package    LocalPackage? @relation(fields: [packageId], references: [id])
+
+  pickupAt       DateTime
+  returnAt       DateTime?
+  tripDays       Int       @default(1)
+  pickupLocation String // summary label e.g. "CSMIA Terminal 2" / "Mumbai"
+  dropLocation   String
+  pickupAddress  String
+  dropAddress    String    @default("")
+  passengers     Int
+
+  companyId        String? // corporate duty: the client company
+  company          Company?        @relation(fields: [companyId], references: [id])
+  corporateOrderId String? // corporate duty: the order it was allocated from
+  corporateOrder   CorporateOrder? @relation(fields: [corporateOrderId], references: [id])
+  orderCarId       String? // corporate duty: the car (and its employees)
+  orderCar         OrderCar?       @relation(fields: [orderCarId], references: [id])
+
+  customerId      String? // the signed-in account that made the booking
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  customerName    String
+  customerMobile  String
+  customerEmail   String?
+  specialRequests String?
+
+  estimatedFare Int // total incl. GST, in rupees
+  gstAmount     Int
+  fareBreakdown String // JSON snapshot of the FareBreakdown at booking time
+  finalFare     Int?
+
+  // Payment (Phase 1: pay to driver/office after trip). A gateway can update these later.
+  paymentStatus String  @default("UNPAID") // UNPAID | PAID | REFUNDED
+  paymentMethod String  @default("PAY_LATER") // PAY_LATER | CASH | UPI | ONLINE
+  paymentRef    String?
+
+  driverId  String?
+  driver    Driver?  @relation(fields: [driverId], references: [id])
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  startedAt   DateTime? // set when the ride moves to ONGOING
+  completedAt DateTime? // set when the ride moves to COMPLETED
+
+  cancelReason   String?
+  cancelledBy    String? // CUSTOMER | ADMIN
+  idempotencyKey String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  history BookingStatusHistory[]
+  notes   BookingNote[]
+
+  @@index([status])
+  @@index([pickupAt])
+  @@index([customerMobile])
+  @@index([customerId])
+  @@index([companyId])
+  @@index([corporateOrderId])
+  @@index([orderCarId])
+}
+
+model Customer {
+  id           String   @id @default(cuid())
+  name         String
+  mobile       String   @unique
+  email        String?  @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  bookings Booking[]
+  sessions CustomerSession[]
+}
+
+model CustomerSession {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+}
+
+model BookingStatusHistory {
+  id         String   @id @default(cuid())
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  fromStatus String?
+  toStatus   String
+  note       String   @default("")
+  changedBy  String // "customer", "system" or admin email
+  createdAt  DateTime @default(now())
+
+  @@index([bookingId])
+}
+
+model BookingNote {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  body      String
+  author    String
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+}
+
+model Driver {
+  id                 String   @id @default(cuid())
+  name               String
+  phone              String
+  licenceNumber      String
+  licenceExpiry      DateTime
+  policeVerification String   @default("PENDING") // PENDING | VERIFIED | REJECTED
+  pinHash            String? // bcrypt hash of the driver-app PIN; null = no driver-app access
+  approved           Boolean  @default(true) // false = signed up in the driver app, waiting for admin approval
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  bookings  Booking[]
+  sessions  DriverSession[]
+  orderCars OrderCar[]
+}
+
+model DriverSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  driverId  String
+  driver    Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([driverId])
+}
+
+model Vehicle {
+  id                 String      @id @default(cuid())
+  registrationNumber String      @unique
+  model              String
+  categoryId         String
+  category           CarCategory @relation(fields: [categoryId], references: [id])
+  ownerName          String      @default("Own")
+  permitExpiry       DateTime
+  insuranceExpiry    DateTime
+  active             Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  bookings  Booking[]
+  orderCars OrderCar[]
+}
+
+model ContactEnquiry {
+  id        String   @id @default(cuid())
+  name      String
+  mobile    String
+  email     String?
+  subject   String   @default("")
+  message   String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("SUPER_ADMIN") // SUPER_ADMIN | SUB_ADMIN
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  sessions         AdminSession[]
+  managedCompanies Company[]        @relation("CompanyManager")
+  managedOrders    CorporateOrder[] @relation("OrderManager")
+}
+
+/// Corporate client (B2B). Its orders are handled by the assigned sub-admin.
+model Company {
+  id                 String     @id @default(cuid())
+  name               String
+  contactName        String     @default("")
+  contactPhone       String     @default("")
+  contactEmail       String     @default("")
+  gstNumber          String     @default("")
+  billingAddress     String     @default("")
+  officeAddress      String     @default("")
+  notes              String     @default("")
+  active             Boolean    @default(true)
+  // Company portal login (/company): created by the super admin, password changed by the company
+  loginId            String?    @unique
+  passwordHash       String?
+  mustChangePassword Boolean    @default(true)
+  // Optional default sub-admin for new orders (super admin can still re-assign each order)
+  managerId          String?
+  manager            AdminUser? @relation("CompanyManager", fields: [managerId], references: [id])
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  employees Employee[]
+  routes    CompanyRoute[]
+  orders    CorporateOrder[]
+  bookings  Booking[]
+}
+
+/// Employee of a corporate client. Created by the company; logs in at /employee to see rides.
+model Employee {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name         String
+  employeeCode String   @default("")
+  mobile       String   @unique
+  email        String   @default("")
+  gender       String   @default("")
+  department   String   @default("")
+  homeAddress  String // pickup / drop location
+  homeArea     String   @default("")
+  homeLandmark String   @default("")
+  homeMapLink  String   @default("") // Google Maps link or "lat,long"
+  passwordHash String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rides OrderCarPassenger[]
+
+  @@index([companyId])
+}
+
+/// A company's own regular route, e.g. "Andheri hub → BKC office".
+model CompanyRoute {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name       String
+  fromPlace  String
+  toPlace    String
+  distanceKm Int?
+  notes      String   @default("")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  orders CorporateOrder[]
+
+  @@index([companyId])
+}
+
+/// Login sessions for the company and employee portals.
+model PortalSession {
+  id        String   @id @default(cuid())
+  kind      String // company | employee
+  subjectId String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([kind, subjectId])
+}
+
+/// A corporate booking: one trip, a range of days, or a month — with one or more cars, each carrying chosen employees.
+model CorporateOrder {
+  id               String        @id @default(cuid())
+  code             String        @unique // ORD-YYYYMMDD-XXXX
+  companyId        String
+  company          Company       @relation(fields: [companyId], references: [id])
+  orderType        String // TRIP | DAILY | MONTHLY
+  status           String        @default("NEW") // NEW | IN_PROGRESS | COMPLETED | CANCELLED
+  startDate        DateTime // IST midnight of first day
+  endDate          DateTime // IST midnight of last day
+  reportingTime    String // "09:00" IST
+  skipSundays      Boolean       @default(false)
+  tripType         String // AIRPORT | LOCAL | OUTSTATION | COMPANY_ROUTE
+  tripSummary      String // e.g. "Drop to Mumbai Airport T2", "Local 8 hr / 80 km"
+  airportId        String?
+  airportDirection String? // PICKUP | DROP
+  packageId        String?
+  routeId          String?
+  roundTrip        Boolean       @default(false)
+  companyRouteId   String?
+  companyRoute     CompanyRoute? @relation(fields: [companyRouteId], references: [id])
+  destination      String        @default("") // where the car finally goes (office, airport, city…)
+  requirements     String        @default("")
+  rate             Int? // agreed rate in rupees (set by admin)
+  rateUnit         String        @default("PER_DAY") // PER_TRIP | PER_DAY | PER_MONTH
+  managerId        String?
+  manager          AdminUser?    @relation("OrderManager", fields: [managerId], references: [id])
+  createdBy        String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  cars   OrderCar[]
+  duties Booking[]
+
+  @@index([companyId])
+  @@index([managerId])
+  @@index([status])
+}
+
+/// One car in a corporate order and the employees who ride in it together.
+model OrderCar {
+  id         String         @id @default(cuid())
+  orderId    String
+  order      CorporateOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  position   Int // Car 1, Car 2…
+  categoryId String
+  category   CarCategory    @relation(fields: [categoryId], references: [id])
+  driverId   String?
+  driver     Driver?        @relation(fields: [driverId], references: [id])
+  vehicleId  String?
+  vehicle    Vehicle?       @relation(fields: [vehicleId], references: [id])
+
+  passengers OrderCarPassenger[]
+  duties     Booking[]
+
+  @@index([orderId])
+}
+
+model OrderCarPassenger {
+  id          String   @id @default(cuid())
+  orderCarId  String
+  orderCar    OrderCar @relation(fields: [orderCarId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  pickupOrder Int      @default(0)
+
+  @@unique([orderCarId, employeeId])
+  @@index([employeeId])
+}
+
+model AdminSession {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  adminId   String
+  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([adminId])
+}

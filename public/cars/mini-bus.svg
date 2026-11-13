@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="mini-bus">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#f1f5f9"/></linearGradient></defs>
+<rect width="320" height="180" fill="url(#bg)"/>
+<ellipse cx="160" cy="152" rx="140" ry="8" fill="#0f172a" opacity="0.12"/>
+<path d="M10 134 L10 44 Q10 30 26 30 L282 30 Q300 30 304 48 L310 112 L310 134 Z" fill="#facc15" stroke="#854d0e" stroke-width="2" stroke-linejoin="round"/>
+<path d="M22 42 L58 42 L58 82 L22 82 Z M64 42 L100 42 L100 82 L64 82 Z M106 42 L142 42 L142 82 L106 82 Z M148 42 L184 42 L184 82 L148 82 Z M190 42 L226 42 L226 82 L190 82 Z M232 42 L268 42 L268 82 L232 82 Z M274 42 L294 42 Q300 42 300 50 L302 82 L274 82 Z" fill="#bfdbfe" stroke="#854d0e" stroke-width="1.5" opacity="0.95"/>
+
+<circle cx="62" cy="130" r="20" fill="#1f2937"/><circle cx="62" cy="130" r="9" fill="#cbd5e1"/><circle cx="256" cy="130" r="20" fill="#1f2937"/><circle cx="256" cy="130" r="9" fill="#cbd5e1"/>
+</svg>

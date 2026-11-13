@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="sedan">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#f1f5f9"/></linearGradient></defs>
+<rect width="320" height="180" fill="url(#bg)"/>
+<ellipse cx="160" cy="152" rx="140" ry="8" fill="#0f172a" opacity="0.12"/>
+<path d="M24 128 L26 108 Q30 96 50 94 L96 90 L132 66 Q140 60 156 60 L206 60 Q220 60 232 70 L258 92 L288 98 Q298 102 298 114 L298 128 Z" fill="#e2e8f0" stroke="#475569" stroke-width="2" stroke-linejoin="round"/>
+<path d="M104 90 L136 70 Q142 66 154 66 L202 66 Q214 66 222 72 L244 90 Z" fill="#bfdbfe" stroke="#475569" stroke-width="1.5" opacity="0.95"/>
+
+<circle cx="78" cy="130" r="20" fill="#1f2937"/><circle cx="78" cy="130" r="9" fill="#cbd5e1"/><circle cx="248" cy="130" r="20" fill="#1f2937"/><circle cx="248" cy="130" r="9" fill="#cbd5e1"/>
+</svg>
